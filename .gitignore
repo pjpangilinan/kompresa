@@ -11,14 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
 
 # CDK
 infra/cdk.out
+infra/cdk.context.json
 infra/node_modules
 infra/worker/node_modules
-infra/worker/Dockerfile
-infra/worker/index.mjs
-infra/worker/package.json
+infra/**/*.js
+infra/**/*.d.ts
 
 # Tests
 coverage
