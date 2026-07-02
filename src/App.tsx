@@ -25,37 +25,44 @@ function App() {
       <AuthProvider>
         <JobsProvider>
           <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
-              <Route element={<Layout />}>
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/jobs/:jobId"
-                  element={
-                    <ProtectedRoute>
-                      <JobStatus />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/download/:jobId"
-                  element={
-                    <ProtectedRoute>
-                      <Download />
-                    </ProtectedRoute>
-                  }
-                />
-              </Route>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route
+                path="/login"
+                element={
+                  <PublicOnly>
+                    <Login />
+                  </PublicOnly>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/jobs/:jobId"
+                element={
+                  <ProtectedRoute>
+                    <JobStatus />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/download/:jobId"
+                element={
+                  <ProtectedRoute>
+                    <Download />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
           </BrowserRouter>
         </JobsProvider>
       </AuthProvider>

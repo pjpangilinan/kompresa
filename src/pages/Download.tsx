@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getDownloadUrl, getJob } from '../api/jobs';
+import { ApiException } from '../api/client';
 import { AmbientBg } from '../components/AmbientBg';
+import { Skeleton } from '../components/Skeleton';
 
 function formatBytes(mb: number | null): string {
   if (mb === null) return '—';
@@ -30,6 +32,7 @@ export function Download() {
 
   const handleDownload = async () => {
     if (!jobId) return;
+    setDownloadError(null);
     try {
       const { url } = await getDownloadUrl(jobId);
       if (url.startsWith('mock://')) {
@@ -46,15 +49,44 @@ export function Download() {
       }
       window.location.href = url;
     } catch (err) {
-      console.error('Download failed', err);
+      const message = err instanceof ApiException ? err.message : 'Failed to fetch download URL';
+      setDownloadError(message);
     }
   };
 
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
   if (isLoading || !job) {
     return (
-      <div className="min-h-screen flex items-center justify-center" aria-busy="true">
-        <div className="font-label-mono text-label-mono text-primary-container uppercase animate-pulse">
-          LOADING OUTPUT...
+      <div className="w-full flex items-center justify-center py-3" aria-busy="true" aria-label="Loading compressed output">
+        <div className="w-full max-w-3xl flex flex-col lg:flex-row gap-6 items-center">
+          <Skeleton className="w-full max-w-[500px] aspect-video" />
+          <div className="flex-1 space-y-4 w-full">
+            <Skeleton className="h-16 w-3/4" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-12 w-48" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (job.status !== 'completed') {
+    return (
+      <div className="w-full flex items-center justify-center py-3">
+        <div className="max-w-2xl w-full bg-surface-container-high border border-error p-6 clip-jagged">
+          <h1 className="font-headline-md text-headline-md text-error uppercase -skew-x-6 mb-2">
+            <span className="skew-x-6 inline-block">NOT_READY</span>
+          </h1>
+          <p className="font-label-mono text-label-mono text-on-surface-variant uppercase mb-4">
+            JOB STATUS: {job.status.toUpperCase()} // CANNOT DOWNLOAD YET
+          </p>
+          <button
+            onClick={() => navigate(`/jobs/${jobId}`)}
+            className="font-label-mono text-label-mono text-primary-container hover:text-on-primary-container hover:bg-primary-container border border-primary-container uppercase px-4 py-2 transition-colors"
+          >
+            VIEW STATUS
+          </button>
         </div>
       </div>
     );
@@ -65,7 +97,7 @@ export function Download() {
     : 0;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-6 relative">
+    <div className="w-full flex items-center justify-center py-3 relative">
       <AmbientBg variant="download" />
       <div className="w-full max-w-[1440px] flex flex-col lg:flex-row gap-gutter items-center justify-center relative z-10">
         <div className="w-full lg:w-1/2 flex justify-center">
@@ -176,6 +208,15 @@ export function Download() {
               ← COMPRESS ANOTHER
             </button>
           </div>
+
+          {downloadError ? (
+            <div
+              role="alert"
+              className="border-2 border-error bg-error-container/20 p-3 font-label-mono text-label-mono text-error uppercase"
+            >
+              {downloadError}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

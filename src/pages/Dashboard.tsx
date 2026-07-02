@@ -90,8 +90,8 @@ export function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-start justify-center px-4 md:px-8 py-6">
-      <div className="w-full max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+    <div className="w-full flex items-center justify-center py-3">
+      <div className="w-full max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-4 items-stretch">
         <div className="col-span-1 md:col-span-4">
           <FilePicker file={file} onFile={setFile} />
           <input

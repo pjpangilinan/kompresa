@@ -3,6 +3,7 @@ import { ProgressBar } from '../components/ProgressBar';
 import { StatusBadge } from '../components/StatusBadge';
 import { Button } from '../components/Button';
 import { Panel } from '../components/Panel';
+import { Skeleton } from '../components/Skeleton';
 import { useJobPolling } from '../hooks/useJobPolling';
 
 function formatEta(sec: number | null): string {
@@ -18,11 +19,11 @@ export function JobStatus() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-md w-full">
+      <div className="w-full flex items-center justify-center py-3">
+        <div className="max-w-2xl w-full">
           <Panel glitch="warning">
-            <div className="p-6">
-              <h1 className="font-headline-md text-headline-md text-warning uppercase mb-2 -skew-x-6">
+            <div className="p-6 md:p-8">
+              <h1 className="font-headline-lg text-headline-lg text-warning uppercase mb-2 -skew-x-6">
                 <span className="skew-x-6 inline-block">SIGNAL_LOST</span>
               </h1>
               <p className="font-label-mono text-label-mono text-on-surface-variant uppercase mb-4">
@@ -38,9 +39,24 @@ export function JobStatus() {
 
   if (!job) {
     return (
-      <div className="min-h-screen flex items-center justify-center" aria-busy="true">
-        <div className="font-label-mono text-label-mono text-primary-container uppercase animate-pulse">
-          ESTABLISHING UPLINK...
+      <div className="w-full flex items-center justify-center py-3" aria-busy="true" aria-label="Loading job status">
+        <div className="w-full max-w-2xl">
+          <Panel>
+            <div className="p-6 border-b border-outline-variant flex items-center justify-between">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-6 w-24" />
+            </div>
+            <div className="p-6 space-y-6">
+              <Skeleton className="h-12 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-2 w-full" />
+              <div className="grid grid-cols-3 gap-4">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </div>
+          </Panel>
         </div>
       </div>
     );
@@ -48,12 +64,12 @@ export function JobStatus() {
 
   if (job.status === 'completed') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="max-w-md w-full">
+      <div className="w-full flex items-center justify-center py-3">
+        <div className="max-w-2xl w-full">
           <Panel glitch="success">
-            <div className="p-6 text-center">
+            <div className="p-6 md:p-10 text-center">
               <StatusBadge status={job.status} />
-              <h1 className="font-headline-xl text-headline-xl text-primary-container uppercase -skew-x-6 leading-none mt-6">
+              <h1 className="font-headline-lg text-headline-lg text-primary-container uppercase -skew-x-6 leading-none mt-6 break-words">
                 <span className="skew-x-6 inline-block">COMPRESSION<br />COMPLETE</span>
               </h1>
               <p className="font-label-mono text-label-mono text-on-surface-variant mt-4 uppercase">
@@ -83,12 +99,12 @@ export function JobStatus() {
 
   if (job.status === 'failed') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <div className="max-w-md w-full">
+      <div className="w-full flex items-center justify-center py-3">
+        <div className="max-w-2xl w-full">
           <Panel glitch="warning">
-            <div className="p-6">
+            <div className="p-6 md:p-8">
               <StatusBadge status={job.status} />
-              <h1 className="font-headline-md text-headline-md text-error uppercase mt-4 -skew-x-6">
+              <h1 className="font-headline-lg text-headline-lg text-error uppercase mt-4 -skew-x-6">
                 <span className="skew-x-6 inline-block">ENCODE_FAILED</span>
               </h1>
               <p className="font-body-md text-body-md text-on-surface-variant mt-2">
@@ -105,7 +121,7 @@ export function JobStatus() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="w-full flex items-center justify-center py-3">
       <div className="w-full max-w-2xl">
         <Panel glitch="cyan" shadow>
           <div className="p-6 border-b border-outline-variant flex items-center justify-between flex-wrap gap-3">

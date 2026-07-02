@@ -1,0 +1,32 @@
+{
+  "name": "kompressa-infra",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "bin": {
+    "infra": "bin/infra.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cdk": "cdk",
+    "cdk:diff": "cdk diff",
+    "cdk:deploy": "cdk deploy",
+    "cdk:synth": "cdk synth",
+    "cdk:destroy": "cdk destroy"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "aws-cdk": "^2.1128.1",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.6.0",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.220.0",
+    "constructs": "^10.5.0"
+  }
+}

@@ -12,6 +12,20 @@ dist
 dist-ssr
 *.local
 
+# CDK
+infra/cdk.out
+infra/node_modules
+infra/worker/node_modules
+infra/worker/Dockerfile
+infra/worker/index.mjs
+infra/worker/package.json
+
+# Tests
+coverage
+playwright-report
+test-results
+.playwright
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -11,10 +11,10 @@ export function TopBar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50">
+    <header className="w-full z-50 sticky top-0">
       <div className="bg-surface-container-lowest border-b-2 border-primary-container shadow-cyber">
         <div className="h-1 bg-primary-container" />
-        <div className="flex items-center justify-between px-4 md:px-8 py-3">
+        <div className="flex items-center justify-between px-4 md:px-8 py-2.5">
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
@@ -22,7 +22,7 @@ export function TopBar() {
             aria-label="Go to dashboard"
           >
             <span
-              className="material-symbols-outlined text-primary-container text-[28px] group-hover:scale-110 transition-transform"
+              className="material-symbols-outlined text-primary-container text-[26px] group-hover:scale-110 transition-transform"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               precision_manufacturing

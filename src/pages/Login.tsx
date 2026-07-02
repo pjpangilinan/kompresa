@@ -59,7 +59,7 @@ export function Login() {
   const showCaptcha = failedAttempts >= 3;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center px-4 py-12 relative">
+    <div className="w-full flex items-center justify-center py-3 relative">
       <div className="absolute inset-0 pointer-events-none opacity-20 bg-halftone" />
 
       <div className="relative w-full max-w-md">
@@ -73,7 +73,7 @@ export function Login() {
               <span className="skew-x-6 inline-block">ACCESS_GATE</span>
             </h1>
             <p className="font-label-mono text-label-mono text-on-surface-variant opacity-60 mt-3 uppercase tracking-widest">
-              PHANTOM_PROTOCOL // v1.0
+              KOMPRESSA // v1.0
             </p>
           </div>
 
