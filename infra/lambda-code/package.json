@@ -1,0 +1,11 @@
+{
+  "name": "kompressa-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "speakeasy": "^2.0.0"
+  }
+}
