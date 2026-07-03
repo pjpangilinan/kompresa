@@ -186,24 +186,16 @@ export class KompressaStack extends Stack {
         PASSWORD_HASH_SECRET: passwordHashSecret.secretName,
         TOTP_SECRET_SECRET: totpSecret.secretName,
         JWT_SIGNING_KEY_SECRET: jwtSigningKey.secretName,
-        FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN ?? '*',
         VPC_SUBNET_1: subnetIds[0] ?? '',
         VPC_SUBNET_2: subnetIds[1] ?? '',
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
       },
     });
 
-    // ─── API Gateway HTTP API ────────────────────────────────
-    const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'https://kompressa.pages.dev';
+    // ─── API Gateway HTTP API (no corsPreflight — Lambda handles CORS) ───
     const httpApi = new apigateway.HttpApi(this, 'HttpApi', {
       apiName: 'kompressa-api',
       description: 'Kompressa public API',
-      corsPreflight: {
-        allowOrigins: [frontendOrigin],
-        allowMethods: [apigateway.CorsHttpMethod.ANY],
-        allowHeaders: ['authorization', 'content-type', 'cookie'],
-        allowCredentials: true,
-      },
     });
     httpApi.addRoutes({
       path: '/{proxy+}',
