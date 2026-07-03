@@ -38,21 +38,21 @@ export function Dashboard() {
   const handleStart = async () => {
     if (!file || !canStart || isBusy) return;
     setSubmit({ kind: 'uploading', pct: 0 });
-    try {
-      const init = await initUpload();
-      await new Promise<void>((resolve) => {
-        const total = file.size;
-        let uploaded = 0;
-        const chunk = 1024 * 1024;
-        const interval = setInterval(() => {
-          uploaded = Math.min(total, uploaded + chunk * 4);
-          setSubmit({ kind: 'uploading', pct: Math.floor((uploaded / total) * 100) });
-          if (uploaded >= total) {
-            clearInterval(interval);
-            resolve();
+      try {
+        const init = await initUpload();
+        setSubmit({ kind: 'uploading', pct: 10 });
+        if (!init.upload_url.startsWith('mock://')) {
+          const uploadRes = await fetch(init.upload_url, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': file.type || 'video/mp4' },
+          });
+          if (!uploadRes.ok) {
+            const text = await uploadRes.text().catch(() => 'Unknown error');
+            throw new Error(`Upload failed (${uploadRes.status}): ${text}`);
           }
-        }, 60);
-      });
+        }
+        setSubmit({ kind: 'uploading', pct: 70 });
       setSubmit({ kind: 'creating' });
       const result = await createJob({
         file_id: init.file_id,
