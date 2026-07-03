@@ -10,8 +10,7 @@ jobs:
     permissions:
       contents: write
     env:
-      VITE_API_MOCK: false
-      VITE_API_ORIGIN: ${{ vars.VITE_API_ORIGIN || 'https://pacvtkbdrf.execute-api.ap-southeast-1.amazonaws.com' }}
+      VITE_API_ORIGIN: ${{ vars.VITE_API_ORIGIN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
