@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { checkSession, login as apiLogin, logout as apiLogout } from '../api/auth';
-import { ApiException } from '../api/client';
+import { ApiException, setBearerToken } from '../api/client';
 import type { LoginRequest } from '../lib/types';
 import { AuthContext, type AuthState } from './auth-context';
 
@@ -28,7 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (req: LoginRequest) => {
     const res = await apiLogin(req);
     if ('token' in res) {
-      const { setBearerToken } = await import('../api/client');
       setBearerToken((res as any).token);
     }
     setState('authenticated');
