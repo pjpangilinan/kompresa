@@ -29,6 +29,12 @@ export class KompressaStack extends Stack {
       enforceSSL: true,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      cors: [{
+        allowedOrigins: ['*'],
+        allowedMethods: [s3.HttpMethods.PUT, s3.HttpMethods.POST],
+        allowedHeaders: ['*'],
+        maxAge: 3600,
+      }],
       lifecycleRules: [
         {
           id: 'expire-uploads',
