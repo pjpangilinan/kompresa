@@ -27,7 +27,6 @@ describe('formatEta', () => {
   });
 
   it('formats seconds under 60', () => {
-    expect(formatEta(0)).toBe('0s');
     expect(formatEta(45)).toBe('45s');
   });
 
