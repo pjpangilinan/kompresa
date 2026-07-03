@@ -3,6 +3,12 @@ import type { ApiError } from '../lib/types';
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? '';
 const USE_MOCK = import.meta.env.VITE_API_MOCK !== 'false';
 
+let bearerToken: string | null = null;
+
+export function setBearerToken(token: string | null) {
+  bearerToken = token;
+}
+
 export class ApiException extends Error {
   status: number;
   code: string;
@@ -28,21 +34,25 @@ export async function apiFetch<T>(path: string, opts: RequestOptions = {}): Prom
   }
 
   const url = `${API_ORIGIN}${path}`;
-  const isFormData = typeof FormData !== 'undefined' && opts.body instanceof FormData;
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+  if (!(typeof FormData !== 'undefined' && opts.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+  if (bearerToken) {
+    headers['Authorization'] = `Bearer ${bearerToken}`;
+  }
+
   const init: RequestInit = {
     method: opts.method ?? 'GET',
     credentials: 'include',
-    headers: isFormData
-      ? { Accept: 'application/json' }
-      : {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+    headers,
     signal: opts.signal,
   };
 
   if (opts.body !== undefined) {
-    init.body = isFormData ? (opts.body as FormData) : JSON.stringify(opts.body);
+    init.body = opts.body instanceof FormData ? opts.body : JSON.stringify(opts.body);
   }
 
   let res: Response;

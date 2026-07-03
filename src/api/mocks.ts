@@ -111,7 +111,7 @@ export async function mockFetch<T>(
       });
     }
     setAuthCookie();
-    return { expires_at: Date.now() + 12 * 60 * 60 * 1000 } as T;
+    return { token: uuid(), expires_at: Date.now() + 12 * 60 * 60 * 1000 } as T;
   }
 
   if (path === '/api/logout' && method === 'POST') {

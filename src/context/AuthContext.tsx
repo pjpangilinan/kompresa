@@ -26,7 +26,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const login = useCallback(async (req: LoginRequest) => {
-    await apiLogin(req);
+    const res = await apiLogin(req);
+    if ('token' in res) {
+      const { setBearerToken } = await import('../api/client');
+      setBearerToken((res as any).token);
+    }
     setState('authenticated');
   }, []);
 
