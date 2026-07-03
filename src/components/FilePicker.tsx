@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { probeFile } from '../api/jobs';
 import { Panel } from './Panel';
 import type { ProbeData } from '../lib/types';
 
@@ -34,30 +32,62 @@ export function FilePicker({ file, onFile }: FilePickerProps) {
   const [dragOver, setDragOver] = useState(false);
   const [probeState, setProbeState] = useState<ProbeState>({ kind: 'idle' });
 
-  const useMock = import.meta.env.VITE_API_MOCK !== 'false';
-
   useEffect(() => {
     setProbeState({ kind: 'idle' });
     if (!file) return;
-    if (!useMock) return;
-    const controller = new AbortController();
-    setProbeState({ kind: 'probing' });
-    probeFile(file, controller.signal)
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setProbeState({ kind: 'ready', data });
-        }
-      })
-      .catch((err) => {
-        if (!controller.signal.aborted) {
-          const message = err instanceof Error ? err.message : 'Probe failed';
-          setProbeState({ kind: 'error', message });
-        }
-      });
-    return () => controller.abort();
-  }, [file, useMock]);
 
-  useQuery({ queryKey: ['noop'], queryFn: () => null, enabled: false });
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.muted = true;
+
+    const url = URL.createObjectURL(file);
+    video.src = url;
+
+    let cancelled = false;
+
+    video.onloadedmetadata = () => {
+      if (cancelled) return;
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+      const codecMap: Record<string, string> = {
+        mp4: 'h264', mkv: 'hevc', mov: 'h264', avi: 'mpeg4', webm: 'vp9',
+      };
+      const codec = codecMap[ext] ?? 'unknown';
+      const pixelCount = video.videoWidth * video.videoHeight;
+      let resolution: '480p' | '720p' | '1080p' | '2160p' = '1080p';
+      if (pixelCount <= 640 * 480) resolution = '480p';
+      else if (pixelCount <= 1280 * 720) resolution = '720p';
+      else if (pixelCount <= 1920 * 1080) resolution = '1080p';
+      else resolution = '2160p';
+
+      setProbeState({
+        kind: 'ready',
+        data: {
+          duration_sec: video.duration || 0,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          resolution,
+          fps: 0,
+          video_codec: codec,
+          video_bitrate_kbps: 0,
+          audio_codec: null,
+          audio_bitrate_kbps: null,
+        },
+      });
+      URL.revokeObjectURL(url);
+    };
+
+    video.onerror = () => {
+      if (cancelled) return;
+      setProbeState({ kind: 'error', message: 'Could not read video metadata' });
+      URL.revokeObjectURL(url);
+    };
+
+    return () => {
+      cancelled = true;
+      URL.revokeObjectURL(url);
+      video.remove();
+    };
+  }, [file]);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
