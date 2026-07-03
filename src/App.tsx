@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { JobsProvider } from './context/JobsContext';
@@ -19,12 +20,29 @@ const queryClient = new QueryClient({
   },
 });
 
+function RedirectHandler() {
+  const navigate = useNavigate();
+  const ran = useRef(false);
+  useEffect(() => {
+    if (ran.current) return;
+    ran.current = true;
+    const redirect = sessionStorage.getItem('spaRedirect');
+    if (redirect) {
+      sessionStorage.removeItem('spaRedirect');
+      const path = redirect.replace('/kompresa', '') || '/';
+      if (path !== '/') navigate(path, { replace: true });
+    }
+  }, [navigate]);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <JobsProvider>
-          <BrowserRouter>
+          <BrowserRouter basename="/kompresa">
+          <RedirectHandler />
           <Routes>
             <Route element={<Layout />}>
               <Route
