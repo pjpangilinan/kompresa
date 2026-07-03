@@ -1,7 +1,7 @@
 import type { ApiError } from '../lib/types';
 
 const API_ORIGIN = import.meta.env.VITE_API_ORIGIN ?? '';
-const USE_MOCK = import.meta.env.DEV || import.meta.env.VITE_API_MOCK !== 'false';
+const USE_MOCK = import.meta.env.DEV;
 
 let bearerToken: string | null = null;
 
