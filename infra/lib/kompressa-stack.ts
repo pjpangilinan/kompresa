@@ -11,7 +11,6 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 
 export class KompressaStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps) {
@@ -170,17 +169,151 @@ export class KompressaStack extends Stack {
 
     const subnetIds = vpc.publicSubnets.slice(0, 2).map(s => s.subnetId);
 
-    const apiFn = new NodejsFunction(this, 'ApiFn', {
+    const apiFn = new lambda.Function(this, 'ApiFn', {
       functionName: 'kompressa-api',
       runtime: lambda.Runtime.NODEJS_22_X,
-      entry: new URL('../lambda-api/index.ts', import.meta.url).pathname,
-      handler: 'handler',
+      handler: 'index.handler',
       timeout: Duration.seconds(30),
       memorySize: 512,
       role: apiRole,
-      bundling: {
-        externalModules: ['@aws-sdk/*'],
-      },
+      code: lambda.Code.fromInline(`
+const { ECSClient, RunTaskCommand } = require('@aws-sdk/client-ecs');
+const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { DynamoDBClient, GetItemCommand, PutItemCommand, UpdateItemCommand } = require('@aws-sdk/client-dynamodb');
+const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
+const { randomUUID } = require('crypto');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const speakeasy = require('speakeasy');
+
+const ecs = new ECSClient({});
+const s3 = new S3Client({});
+const ddb = new DynamoDBClient({});
+const sm = new SecretsManagerClient({});
+
+const CORS = { 'Access-Control-Allow-Origin': process.env.FRONTEND_ORIGIN || '*', 'Access-Control-Allow-Credentials': 'true', 'Access-Control-Allow-Headers': 'authorization,content-type,cookie' };
+
+const secrets = {};
+async function loadSecret(name) {
+  if (secrets[name]) return secrets[name];
+  const out = await sm.send(new GetSecretValueCommand({ SecretId: name }));
+  secrets[name] = out.SecretString;
+  return secrets[name];
+}
+
+function json(status, body) {
+  return { statusCode: status, headers: { 'Content-Type': 'application/json', ...CORS }, body: JSON.stringify(body) };
+}
+
+async function verifySession(event) {
+  const cookie = event.headers?.cookie ?? event.headers?.Cookie ?? '';
+  const m = cookie.match(/session=([^;]+)/);
+  if (!m) return null;
+  try {
+    const key = await loadSecret(process.env.JWT_SIGNING_KEY_SECRET);
+    return jwt.verify(m[1], key);
+  } catch { return null; }
+}
+
+exports.handler = async (event) => {
+  const path = event.rawPath ?? event.path ?? '';
+  const method = event.requestContext?.http?.method ?? event.httpMethod ?? 'GET';
+  if (method === 'OPTIONS') return json(200, {});
+
+  try {
+    if (path === '/api/login' && method === 'POST') {
+      const { password, totp } = JSON.parse(event.body ?? '{}');
+      const [hash, tSecret, key] = await Promise.all([
+        loadSecret(process.env.PASSWORD_HASH_SECRET),
+        loadSecret(process.env.TOTP_SECRET_SECRET),
+        loadSecret(process.env.JWT_SIGNING_KEY_SECRET),
+      ]);
+      const ok = await bcrypt.compare(password ?? '', hash);
+      const totpOk = speakeasy.totp.verify({ secret: tSecret, encoding: 'base32', token: String(totp ?? ''), window: 1 });
+      if (!ok || !totpOk) return json(401, { error: { code: 'invalid_credentials', message: 'Invalid credentials' } });
+      const token = jwt.sign({ sub: 'admin', iat: Math.floor(Date.now() / 1000) }, key, { expiresIn: '12h' });
+      return { statusCode: 200, headers: { 'Set-Cookie': \`session=\${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=43200\`, 'Content-Type': 'application/json', ...CORS }, body: JSON.stringify({ expires_at: Date.now() + 12*3600*1000 }) };
+    }
+
+    const session = await verifySession(event);
+    if (!session && path !== '/api/session') return json(401, { error: { code: 'unauthorized', message: 'Auth required' } });
+
+    if (path === '/api/session' && method === 'GET') {
+      return json(200, { authenticated: !!session });
+    }
+
+    if (path === '/api/logout' && method === 'POST') {
+      return { statusCode: 204, headers: { 'Set-Cookie': 'session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0', ...CORS } };
+    }
+
+    if (path === '/api/uploads' && method === 'POST') {
+      const fileId = randomUUID();
+      const cmd = new PutObjectCommand({ Bucket: process.env.UPLOADS_BUCKET, Key: \`uploads/\${fileId}\` });
+      const uploadUrl = await getSignedUrl(s3, cmd, { expiresIn: 900 });
+      return json(200, { upload_url: uploadUrl, file_id: fileId, expires_at: Date.now() + 900*1000 });
+    }
+
+    if (path === '/api/compress' && method === 'POST') {
+      const { file_id, target_size_mb, codec, max_resolution, audio_bitrate_kbps } = JSON.parse(event.body ?? '{}');
+      const jobId = randomUUID();
+      const ttl = Math.floor(Date.now()/1000) + 7*24*3600;
+      const now = Date.now();
+      await ddb.send(new PutItemCommand({
+        TableName: process.env.JOBS_TABLE,
+        Item: {
+          job_id: { S: jobId }, source_file_key: { S: \`uploads/\${file_id}\` }, output_file_key: { S: '' },
+          target_size_mb: { N: String(target_size_mb ?? 25) }, actual_output_size_mb: { N: '0' },
+          status: { S: 'queued' }, progress_pct: { N: '0' }, estimated_time_remaining_sec: { N: '0' }, output_url: { S: '' },
+          codec: { S: codec ?? 'h264' }, error_message: { S: '' }, created_at: { N: String(now) }, completed_at: { N: '0' },
+          ttl: { N: String(ttl) },
+        },
+      }));
+      await ecs.send(new RunTaskCommand({
+        cluster: process.env.WORKER_CLUSTER, taskDefinition: process.env.WORKER_TASK_DEFINITION, launchType: 'FARGATE',
+        networkConfiguration: { awsvpcConfiguration: { assignPublicIp: 'ENABLED', subnets: [process.env.VPC_SUBNET_1, process.env.VPC_SUBNET_2].filter(Boolean) } },
+        overrides: { containerOverrides: [{ name: 'ffmpeg', environment: [
+          { name: 'JOB_ID', value: jobId }, { name: 'SOURCE_KEY', value: \`uploads/\${file_id}\` },
+          { name: 'TARGET_SIZE_MB', value: String(target_size_mb ?? 25) }, { name: 'CODEC', value: codec ?? 'h264' },
+          { name: 'MAX_RESOLUTION', value: max_resolution ?? '1080p' }, { name: 'AUDIO_BITRATE_KBPS', value: String(audio_bitrate_kbps ?? 128) },
+        ] }] },
+      }));
+      return json(200, { job_id: jobId, status: 'queued' });
+    }
+
+    const m = path.match(/^\\/api\\/jobs\\/([0-9a-f-]+)(?:\\/download)?$/);
+    if (m) {
+      const jobId = m[1];
+      const out = await ddb.send(new GetItemCommand({ TableName: process.env.JOBS_TABLE, Key: { job_id: { S: jobId } } }));
+      if (!out.Item) return json(404, { error: { code: 'not_found', message: 'Job not found' } });
+      const I = (k) => out.Item[k];
+      const S = (k) => I(k)?.S || null;
+      const N = (k) => (I(k)?.N ? Number(I(k).N) : null);
+      const job = { job_id: S('job_id'), source_file_key: S('source_file_key'), output_file_key: S('output_file_key'),
+        target_size_mb: N('target_size_mb'), actual_output_size_mb: N('actual_output_size_mb'), status: S('status'),
+        progress_pct: N('progress_pct'), estimated_time_remaining_sec: N('estimated_time_remaining_sec'),
+        output_url: S('output_url'), codec: S('codec'), error_message: S('error_message'),
+        created_at: N('created_at'), completed_at: N('completed_at') };
+      if (path.endsWith('/download')) {
+        if (!job.output_file_key) return json(409, { error: { code: 'not_ready', message: 'Output not ready' } });
+        const url = await getSignedUrl(s3, new GetObjectCommand({ Bucket: process.env.OUTPUTS_BUCKET, Key: job.output_file_key }), { expiresIn: 900 });
+        return json(200, { url });
+      }
+      if (method === 'DELETE') {
+        await ddb.send(new UpdateItemCommand({ TableName: process.env.JOBS_TABLE, Key: { job_id: { S: jobId } },
+          UpdateExpression: 'SET #s = :s', ExpressionAttributeNames: { '#s': 'status' }, ExpressionAttributeValues: { ':s': { S: 'cancelled' } } }));
+        return json(204, {});
+      }
+      return json(200, job);
+    }
+
+    return json(404, { error: { code: 'not_found', message: 'Route not found' } });
+  } catch (err) {
+    console.error('handler error', err);
+    return json(500, { error: { code: 'internal', message: err?.message ?? 'Unknown error' } });
+  }
+};
+`),
       environment: {
         UPLOADS_BUCKET: uploadsBucket.bucketName,
         OUTPUTS_BUCKET: outputsBucket.bucketName,
@@ -190,11 +323,10 @@ export class KompressaStack extends Stack {
         PASSWORD_HASH_SECRET: passwordHashSecret.secretName,
         TOTP_SECRET_SECRET: totpSecret.secretName,
         JWT_SIGNING_KEY_SECRET: jwtSigningKey.secretName,
-        FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
+        FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN ?? '*',
         VPC_SUBNET_1: subnetIds[0] ?? '',
         VPC_SUBNET_2: subnetIds[1] ?? '',
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
-        NODE_OPTIONS: '--enable-source-maps',
       },
     });
 

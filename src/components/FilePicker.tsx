@@ -218,17 +218,6 @@ export function FilePicker({ file, onFile }: FilePickerProps) {
 
               <dt className="text-on-surface-variant opacity-60">CODEC</dt>
               <dd className="text-primary-container text-right">{probeState.data.video_codec.toUpperCase()}</dd>
-
-              <dt className="text-on-surface-variant opacity-60">FPS</dt>
-              <dd className="text-on-surface text-right">{probeState.data.fps}</dd>
-
-              <dt className="text-on-surface-variant opacity-60">VIDEO KBPS</dt>
-              <dd className="text-on-surface text-right">{probeState.data.video_bitrate_kbps}</dd>
-
-              <dt className="text-on-surface-variant opacity-60">AUDIO</dt>
-              <dd className="text-on-surface text-right">
-                {probeState.data.audio_codec?.toUpperCase() ?? 'NONE'} @ {probeState.data.audio_bitrate_kbps ?? 0}
-              </dd>
             </dl>
           ) : null}
         </div>
