@@ -34,9 +34,12 @@ export function FilePicker({ file, onFile }: FilePickerProps) {
   const [dragOver, setDragOver] = useState(false);
   const [probeState, setProbeState] = useState<ProbeState>({ kind: 'idle' });
 
+  const useMock = import.meta.env.VITE_API_MOCK !== 'false';
+
   useEffect(() => {
     setProbeState({ kind: 'idle' });
     if (!file) return;
+    if (!useMock) return;
     const controller = new AbortController();
     setProbeState({ kind: 'probing' });
     probeFile(file, controller.signal)
@@ -52,7 +55,7 @@ export function FilePicker({ file, onFile }: FilePickerProps) {
         }
       });
     return () => controller.abort();
-  }, [file]);
+  }, [file, useMock]);
 
   useQuery({ queryKey: ['noop'], queryFn: () => null, enabled: false });
 
