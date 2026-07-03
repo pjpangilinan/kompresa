@@ -44,9 +44,17 @@ export function FilePicker({ file, onFile }: FilePickerProps) {
     video.src = url;
 
     let cancelled = false;
+    let timedOut = setTimeout(() => {
+      if (cancelled) return;
+      cancelled = true;
+      setProbeState({ kind: 'error', message: 'Probe timed out' });
+      URL.revokeObjectURL(url);
+      video.remove();
+    }, 5000);
 
     video.onloadedmetadata = () => {
       if (cancelled) return;
+      clearTimeout(timedOut);
       const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
       const codecMap: Record<string, string> = {
         mp4: 'h264', mkv: 'hevc', mov: 'h264', avi: 'mpeg4', webm: 'vp9',
@@ -74,17 +82,20 @@ export function FilePicker({ file, onFile }: FilePickerProps) {
         },
       });
       URL.revokeObjectURL(url);
+      video.remove();
     };
 
     video.onerror = () => {
       if (cancelled) return;
+      clearTimeout(timedOut);
       setProbeState({ kind: 'error', message: 'Could not read video metadata' });
       URL.revokeObjectURL(url);
+      video.remove();
     };
 
     return () => {
       cancelled = true;
-      URL.revokeObjectURL(url);
+      clearTimeout(timedOut);
       video.remove();
     };
   }, [file]);
