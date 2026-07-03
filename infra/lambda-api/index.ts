@@ -129,7 +129,7 @@ export async function handler(event: any): Promise<any> {
       return {
         statusCode: 200,
         headers: {
-          'Set-Cookie': `session=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=43200`,
+          'Set-Cookie': `session=${token}; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=43200`,
           'Content-Type': 'application/json',
           ...CORS_HEADERS,
         },
@@ -150,7 +150,7 @@ export async function handler(event: any): Promise<any> {
       return {
         statusCode: 204,
         headers: {
-          'Set-Cookie': 'session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0',
+          'Set-Cookie': 'session=; HttpOnly; Secure; SameSite=None; Path=/; Max-Age=0',
           ...CORS_HEADERS,
         },
       };
