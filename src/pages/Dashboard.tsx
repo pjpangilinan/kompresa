@@ -40,19 +40,30 @@ export function Dashboard() {
     setSubmit({ kind: 'uploading', pct: 0 });
       try {
         const init = await initUpload();
-        setSubmit({ kind: 'uploading', pct: 10 });
+        setSubmit({ kind: 'uploading', pct: 5 });
         if (!init.upload_url.startsWith('mock://')) {
-          const uploadRes = await fetch(init.upload_url, {
-            method: 'PUT',
-            body: file,
-            headers: { 'Content-Type': file.type || 'video/mp4' },
-          });
-          if (!uploadRes.ok) {
-            const text = await uploadRes.text().catch(() => 'Unknown error');
-            throw new Error(`Upload failed (${uploadRes.status}): ${text}`);
+          try {
+            const xhr = new XMLHttpRequest();
+            await new Promise<void>((resolve, reject) => {
+              xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                  setSubmit({ kind: 'uploading', pct: 5 + Math.round((e.loaded / e.total) * 90) });
+                }
+              };
+              xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) resolve();
+                else reject(new Error(`Upload failed (${xhr.status})`));
+              };
+              xhr.onerror = () => reject(new Error('Upload network error'));
+              xhr.open('PUT', init.upload_url);
+              xhr.setRequestHeader('Content-Type', file.type || 'video/mp4');
+              xhr.send(file);
+            });
+          } catch (err) {
+            throw err;
           }
         }
-        setSubmit({ kind: 'uploading', pct: 70 });
+        setSubmit({ kind: 'uploading', pct: 95 });
       setSubmit({ kind: 'creating' });
       const result = await createJob({
         file_id: init.file_id,

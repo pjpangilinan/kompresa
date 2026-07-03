@@ -5,8 +5,7 @@ export function formatBytes(mb: number | null): string {
 }
 
 export function formatEta(sec: number | null): string {
-  if (sec === null) return '—';
-  if (sec < 0) return '—';
+  if (sec === null || sec <= 0) return '—';
   if (sec < 60) return `${sec}s`;
   return `${Math.floor(sec / 60)}m ${sec % 60}s`;
 }

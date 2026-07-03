@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtempSync, statSync, createReadStream } from 'node:fs';
+import { mkdtempSync, statSync, createReadStream, createWriteStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -43,11 +43,11 @@ async function downloadSource(workDir) {
   const inPath = join(workDir, 'input');
   const obj = await s3.send(new GetObjectCommand({ Bucket: process.env.UPLOADS_BUCKET, Key: SOURCE_KEY }));
   await new Promise((resolve, reject) => {
-    const out = createReadStream(inPath);
+    const out = createWriteStream(inPath);
+    out.on('error', reject);
+    out.on('finish', resolve);
     obj.Body.pipe(out);
     obj.Body.on('error', reject);
-    out.on('finish', resolve);
-    out.on('error', reject);
   });
   return inPath;
 }
@@ -87,6 +87,7 @@ async function encode(inputPath, outputPath) {
     '-vf', filter,
     '-an', '-sn',
     '-pass', '1',
+    '-passlogfile', passLog,
     '-f', 'null',
     '/dev/null',
   ];
